@@ -33,15 +33,28 @@ int main() {
       cleanup(soc, SOCKET_PATH); // Clean up resources
       return 1;
    }
-   // Receive a message and store it in buf
-   int n = recvfrom(soc, buf, sizeof(buf) - 1, 0, (sockaddr*)&peer, &peer_len);
-   if (n < 0) { // Check for receiving error
-      std::cerr << "recvfrom failed\n";
-      cleanup(soc, SOCKET_PATH); // Clean up resources
-      return 1;
-   }
-   buf[n] = '\0'; // Null-terminate the received message
-   std::cout << "Received message: " << buf << "\n"; // Output the received  message
-   cleanup(soc, SOCKET_PATH); // Clean up resources after use
-   return 0; // Successful execution
+
+    std::cout << "Waiting for messages...\n";
+
+    // Loop to receive multiple messages
+    while (true) {
+        int n = recvfrom(soc, buf, sizeof(buf) - 1, 0, (sockaddr *)&peer, &peer_len);
+        if (n < 0) {
+            std::cerr << "recvfrom failed\n";
+            cleanup(soc, SOCKET_PATH);
+            return 1;
+        }
+
+        buf[n] = '\0'; // Null-terminate the received message
+        std::cout << "Received: " << buf << "\n";
+
+        // Exit loop if the sender indicates completion
+        if (strcmp(buf, "END") == 0) {
+            std::cout << "All messages received. Exiting.\n";
+            break;
+        }
+    }
+
+    cleanup(soc, SOCKET_PATH);
+    return 0;
 }
