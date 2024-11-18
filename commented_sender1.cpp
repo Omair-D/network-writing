@@ -7,13 +7,14 @@
 #include <sys/socket.h> // main socket functions
 #include <sys/un.h>     // UNIX domain socket structures
 #include <unistd.h>     // for close()
+#include <cstdlib> // rand()
+#include <ctime> // seeding rand()
+
 
 int main() {
     // Define the path for the receiver socket file
     const char *SOCKET_PATH = "./receiver_soc";
     char message[1024]; // Matching buffer size
-    std::cout << "Enter a message to send (up to 1024 characters): ";
-    std::cin.getline(message, sizeof(message)); // Allow input of larger messages
 
 
     int soc;                             // Socket file descriptor
@@ -30,16 +31,31 @@ int main() {
         return 1;  // Exit with error code
     }
 
-    // Send the message to the receiver
-    int n = sendto(soc, message, std::strlen(message), 0, (sockaddr*)&peer, sizeof(peer));
-    if (n < 0) { // Check for sending error
-        std::cerr << "sendto failed\n";
-        close(soc); // Close the socket
-        return 1;
+    std::srand(std::time(0)); // Seed the random number generator
+
+
+    int total_messages = 10; // Number of messages to send
+    for (int i = 1; i <= total_messages; ++i) {
+        // Generate a random number and format the message with a sequence number
+        int random_number = std::rand() % 1000; // Random number between 0-999
+        std::sprintf(message, "Message %d: %d", i, random_number);
+
+        // Send the message
+        int n = sendto(soc, message, std::strlen(message), 0, (sockaddr *)&peer, sizeof(peer));
+        if (n < 0) {
+            std::cerr << "sendto failed\n";
+            close(soc);
+            return 1;
+        }
+
+        std::cout << "Sent: " << message << "\n";
     }
 
-    // Output confirmation of message sent with byte count
-    std::cout << "Sent message: " << message << " (" << n << " bytes)\n";
-    close(soc); // Close the socket
-    return 0;   // Successful execution
+    // Send a special "END" message to signal the receiver
+    std::strcpy(message, "END");
+    sendto(soc, message, std::strlen(message), 0, (sockaddr *)&peer, sizeof(peer));
+
+    std::cout << "All messages sent.\n";
+    close(soc);
+    return 0;
 }
