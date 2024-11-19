@@ -56,6 +56,9 @@ int main() {
             break;
         }
 
+        sleep(10); // Delay for 10 seconds before sending the reply
+
+
         // Generate a random number and reply to the sender
         int random_number = std::rand() % 1000; // Random number between 0-999
         char reply[1024];
@@ -74,3 +77,4 @@ int main() {
     cleanup(soc, SOCKET_PATH);
     return 0;
 }
+
