@@ -1,4 +1,3 @@
-// sender.cpp
 #include <iostream>
 #include <cstring>
 #include <sys/types.h>
@@ -7,14 +6,18 @@
 #include <unistd.h>
 #include <cstdlib> // For rand()
 #include <ctime>   // For seeding rand()
+#include <sys/time.h> // For select()
+
+const int MAX_RETRIES = 3; // Maximum number of retries for sending/receiving
+const int TIMEOUT_SEC = 5; // Timeout in seconds for receiving a reply
 
 int main() {
-    const char *SOCKET_PATH = "./receiver_soc"; // Path for receiver
+    const char *SOCKET_PATH = "./receiver_soc";     // Path for receiver
     const char *SENDER_SOCKET_PATH = "./sender_soc"; // Path for sender
     char message[1024]; // Buffer for messages
     char reply[1024];   // Buffer for replies
     int soc;
-    sockaddr_un peer, self; // Corrected declaration
+    sockaddr_un peer, self;
 
     // Set up the sender's own address
     self.sun_family = AF_UNIX;
@@ -49,28 +52,61 @@ int main() {
         int random_number = std::rand() % 1000; // Random number between 0-999
         std::sprintf(message, "Message %d: %d", i, random_number);
 
-        // Send the message
-        int sent = sendto(soc, message, std::strlen(message), 0, (sockaddr *)&peer, sizeof(peer));
-        if (sent < 0) {
-            std::cerr << "sendto failed\n";
-            close(soc);
-            unlink(SENDER_SOCKET_PATH);
-            return 1;
+        // Send the message with retries
+        int retries = 0;
+        while (retries < MAX_RETRIES) {
+            int sent = sendto(soc, message, std::strlen(message), 0, (sockaddr *)&peer, sizeof(peer));
+            if (sent >= 0) {
+                std::cout << "Sent: " << message << "\n";
+                break;
+            } else {
+                std::cerr << "sendto failed, retrying... (" << retries + 1 << ")\n";
+                retries++;
+            }
+        }
+        if (retries == MAX_RETRIES) {
+            std::cerr << "Failed to send message after " << MAX_RETRIES << " retries. Skipping.\n";
+            continue;
         }
 
-        std::cout << "Sent: " << message << "\n";
+        // Receive a reply with retries and timeout
+        retries = 0;
+        while (retries < MAX_RETRIES) {
+            // Set up timeout for select()
+            struct timeval timeout;
+            timeout.tv_sec = TIMEOUT_SEC;
+            timeout.tv_usec = 0;
 
-        // Receive a reply from the receiver
-        int received = recvfrom(soc, reply, sizeof(reply) - 1, 0, nullptr, nullptr);
-        if (received < 0) {
-            std::cerr << "recvfrom failed\n";
-            close(soc);
-            unlink(SENDER_SOCKET_PATH);
-            return 1;
+            fd_set read_fds;
+            FD_ZERO(&read_fds);
+            FD_SET(soc, &read_fds);
+
+            // Wait for reply or timeout
+            int activity = select(soc + 1, &read_fds, nullptr, nullptr, &timeout);
+            if (activity < 0) {
+                std::cerr << "select failed\n";
+                break;
+            } else if (activity == 0) {
+                std::cerr << "recvfrom timed out, retrying... (" << retries + 1 << ")\n";
+                retries++;
+                continue;
+            }
+
+            // Receive the reply
+            int received = recvfrom(soc, reply, sizeof(reply) - 1, 0, nullptr, nullptr);
+            if (received >= 0) {
+                reply[received] = '\0'; // Null-terminate the received reply
+                std::cout << "Received reply: " << reply << "\n";
+                break;
+            } else {
+                std::cerr << "recvfrom failed, retrying... (" << retries + 1 << ")\n";
+                retries++;
+            }
         }
-
-        reply[received] = '\0'; // Null-terminate the received reply
-        std::cout << "Received reply: " << reply << "\n";
+        if (retries == MAX_RETRIES) {
+            std::cerr << "Failed to receive reply after " << MAX_RETRIES << " retries. Moving to the next message.\n";
+            continue;
+        }
     }
 
     // Send a special "END" message to signal the receiver
