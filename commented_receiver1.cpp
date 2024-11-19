@@ -40,31 +40,6 @@ int main() {
 
     // Loop to receive multiple messages
     while (true) {
-        // Set up the timeout
-        struct timeval timeout;
-        timeout.tv_sec = 5; // 5-second timeout
-        timeout.tv_usec = 0;
-
-        // Set up file descriptor set for select()
-        fd_set read_fds;
-        FD_ZERO(&read_fds);
-        FD_SET(soc, &read_fds);
-
-        // Wait for a message or timeout
-        int activity = select(soc + 1, &read_fds, nullptr, nullptr, &timeout);
-
-        if (activity < 0) {
-            std::cerr << "Error during select()\n";
-            cleanup(soc, SOCKET_PATH);
-            return 1;
-        } else if (activity == 0) {
-            // Timeout occurred
-            std::cerr << "Error: No message received within the timeout period.\n";
-            cleanup(soc, SOCKET_PATH);
-            return 1;
-        }
-
-        // Receive the message
         int n = recvfrom(soc, buf, sizeof(buf) - 1, 0, (sockaddr *)&peer, &peer_len);
         if (n < 0) {
             std::cerr << "recvfrom failed\n";
@@ -80,9 +55,22 @@ int main() {
             std::cout << "All messages received. Exiting.\n";
             break;
         }
+
+        // Generate a random number and reply to the sender
+        int random_number = std::rand() % 1000; // Random number between 0-999
+        char reply[1024];
+        std::sprintf(reply, "Reply: %d", random_number);
+
+        int sent = sendto(soc, reply, std::strlen(reply), 0, (sockaddr *)&peer, peer_len);
+        if (sent < 0) {
+            std::cerr << "sendto failed\n";
+            cleanup(soc, SOCKET_PATH);
+            return 1;
+        }
+
+        std::cout << "Sent reply: " << reply << "\n";
     }
 
     cleanup(soc, SOCKET_PATH);
     return 0;
 }
-
