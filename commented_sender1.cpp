@@ -1,5 +1,5 @@
 // sender.cpp
-// Sender program for a datagram socket using UNIX domain in C++
+// Sender program for a datagram socket using UNIX domain in C++ 
 
 #include <iostream>     // for std::cout and std::cerr
 #include <cstring>      // for std::strlen and std::strcpy
