@@ -6,6 +6,8 @@
 #include <sys/socket.h> // main socket functions
 #include <unistd.h> // for close() and unlink()
 #include <sys/un.h> // UNIX domain socket structures
+#include <sys/time.h> // For select() and timeval
+
 // Cleanup function to close the socket and unlink (delete) the socket file
 void cleanup(int soc, const char *path) {
    close(soc); // Close the socket file descriptor
@@ -38,6 +40,31 @@ int main() {
 
     // Loop to receive multiple messages
     while (true) {
+        // Set up the timeout
+        struct timeval timeout;
+        timeout.tv_sec = 5; // 5-second timeout
+        timeout.tv_usec = 0;
+
+        // Set up file descriptor set for select()
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(soc, &read_fds);
+
+        // Wait for a message or timeout
+        int activity = select(soc + 1, &read_fds, nullptr, nullptr, &timeout);
+
+        if (activity < 0) {
+            std::cerr << "Error during select()\n";
+            cleanup(soc, SOCKET_PATH);
+            return 1;
+        } else if (activity == 0) {
+            // Timeout occurred
+            std::cerr << "Error: No message received within the timeout period.\n";
+            cleanup(soc, SOCKET_PATH);
+            return 1;
+        }
+
+        // Receive the message
         int n = recvfrom(soc, buf, sizeof(buf) - 1, 0, (sockaddr *)&peer, &peer_len);
         if (n < 0) {
             std::cerr << "recvfrom failed\n";
@@ -58,3 +85,4 @@ int main() {
     cleanup(soc, SOCKET_PATH);
     return 0;
 }
+
