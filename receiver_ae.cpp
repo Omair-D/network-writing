@@ -1,3 +1,7 @@
+// Omair Durrani & Benjamin Ward
+// CCN Fall 2024
+// 11/18/2024
+
 // receiver.cpp
 // Receiver program for a datagram socket using UNIX domain in C++
 #include <iostream> // for std::cout and std::cerr
