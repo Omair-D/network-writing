@@ -1,3 +1,7 @@
+// Omair Durrani & Benjamin Ward
+// CCN Fall 2024
+// 11/18/2024
+
 // sender_f.cpp
 #include <iostream>
 #include <cstring>
