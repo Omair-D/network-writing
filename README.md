@@ -40,24 +40,6 @@ Both programs run in separate terminals and communicate using UNIX domain socket
 
 ---
 
-## Setup and Compilation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/texting-app.git
-   cd texting-app
-   ```
-
-2. Compile the sender and receiver programs:
-
-   ```bash
-   g++ sender_f.cpp -o sender
-   g++ receiver_f.cpp -o receiver
-   ```
-
----
-
 ## Usage
 
 ### Running the Application
